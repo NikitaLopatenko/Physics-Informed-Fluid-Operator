@@ -1,0 +1,39 @@
+{
+  "setup": "One forward pass. The network predicts a vector potential and a pressure. Velocity is the curl of the potential, so divergence is a hard zero. Loss is relative L2 of velocity and pressure.",
+  "nu": 0.05,
+  "train_grid": 32,
+  "A_velocity_rel_l2": 0.5047499537467957,
+  "A_pressure_rel_l2": 0.8913466930389404,
+  "A_pass_under_3pct": false,
+  "B_pass_1000x_openfoam_same_gpu": false,
+  "B_reason": "This machine has no NVIDIA GPU and OpenFOAM was not timed on the same GPU. The ratio below is against this spectral solver on CPU.",
+  "B_timing_32": {
+    "solver_seconds": 1.028817916288972,
+    "fno_seconds": 0.0285825002938509,
+    "speedup_vs_this_solver": 35.994678761896374
+  },
+  "C_zero_shot_64": {
+    "velocity_rel_l2": 0.4925136864185333,
+    "pressure_rel_l2": 0.8652334809303284,
+    "divergence_rms": 2.9658035600732546e-06,
+    "divergence_max": 1.6519679775228724e-05,
+    "ran": true
+  },
+  "C_zero_shot_128": {
+    "velocity_rel_l2": 0.5049782395362854,
+    "pressure_rel_l2": 0.8661547899246216,
+    "divergence_rms": 6.094624950492289e-06,
+    "divergence_max": 3.829878187389113e-05,
+    "ran": true
+  },
+  "C_pass": false,
+  "D_divergence_rms": 1.341038796454086e-06,
+  "D_divergence_max": 7.3831733971019275e-06,
+  "D_pass_near_zero": true,
+  "train": {
+    "best_epoch": 39,
+    "best_val_rel_l2": 0.6996692419052124,
+    "seconds": 40.21450670808554
+  },
+  "parameters": 886432
+}

@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+*.pyc
+data/*.npz
+runs/*
+!runs/spec_metrics.json
+!runs/fno3d_oneshot.pt
+.DS_Store
