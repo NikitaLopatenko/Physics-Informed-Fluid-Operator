@@ -1,43 +1,43 @@
-# Течение в кубе, угаданное за один проход
+# A cube of flow, predicted in one pass
 
-Есть куб с водой. В начальный момент вода уже движется. Нужно сказать, как она будет двигаться ещё 0.4 секунды, и какое при этом будет давление.
+A cube is full of water. At the start, the water is already moving. The task is to say how it will move for another 0.4 seconds, and what the pressure will be.
 
-Обычный расчёт идёт маленькими шагами. На каждом шаге он много раз преобразует поле в частоты и обратно. Если таких запросов тысячи, это долго.
+A usual solver takes small steps. On every step it turns the field into frequencies and back, many times. That is slow when the same kind of question is asked thousands of times.
 
-Здесь сеть смотрит на начальное движение и сразу пишет ответ на четыре момента времени. Она не пишет скорость напрямую. Она пишет вспомогательное поле, потенциал, а скорость получается как его ротор. У ротора сколько втекло в точку, столько и вытекло. Сохранение массы выполняется само, его не нужно выпрашивать штрафом.
+Here a network looks at the starting motion and writes the answer at four later times in one pass. It does not write the velocity itself. It writes an auxiliary field, a potential, and the velocity is the curl of that potential. Whatever flows into a point also flows out. Mass is conserved by construction, so the loss does not have to ask for it.
 
-Это лабораторный куб с периодическими стенками, не крыло и не система охлаждения чипа.
+This is a laboratory cube with periodic walls. It is not a wing and it is not a chip cooler.
 
-![Ошибка скорости и давления до ротора и после, и дивергенция на логарифмической шкале](figures/errors.png)
+![Velocity and pressure error before and after the curl, and divergence on a log scale](figures/errors.png)
 
-Слева видно, что ошибка поля осталась большой: порог задания был 3%, красная линия внизу. Справа видно, что изменилось на самом деле. Пока дивергенцию только штрафовали, она была около 0.3. Когда скорость стала ротором, она упала до одной миллионной. Красная линия 0.01 — это порог «около нуля».
+On the left, the field error stays large. The requested limit was 3%, the red line at the bottom. On the right is the change that actually happened. While divergence was only penalized, it sat near 0.3. Once the velocity became a curl, it fell to about one part in a million. The red line at 0.01 is the “near zero” limit.
 
-## Что просили и что вышло
+## What was asked, and what came out
 
-Считалось на процессоре Apple M3. Видеокарты в этом сравнении нет.
+Measured on an Apple M3 CPU. There is no GPU in this comparison.
 
-| | Просили | Получилось |
+| | Asked | Measured |
 | --- | --- | --- |
-| Ошибка скорости и давления | обе меньше 3% | скорость 50.5%, давление 89.1% |
-| Быстрее обычного решателя в 1000 раз на той же видеокарте | да | видеокарты и OpenFOAM здесь нет. Против спектрального решателя на процессоре быстрее в 36 раз: 1.03 с против 0.029 с |
-| Обучили на сетке 32³, спросили на 128³ без дообучения | обе ошибки меньше 3% | на 128³ скорость 50.5%, давление 86.6%. Считается, порог не взят |
-| Дивергенция около нуля | RMS меньше 0.01 | RMS 1.3×10⁻⁶. Взято |
+| Velocity and pressure error | both under 3% | velocity 50.5%, pressure 89.1% |
+| At least 1000× faster than a traditional solver on the same GPU | yes | no NVIDIA GPU and no OpenFOAM here. Against the spectral solver on CPU, 36× faster: 1.03 s versus 0.029 s |
+| Train on a 32³ grid, answer on 128³ with no fine-tuning | both errors under 3% | on 128³, velocity 50.5%, pressure 86.6%. It runs. The limit is missed |
+| Divergence near zero | RMS under 0.01 | RMS 1.3×10⁻⁶. Met |
 
-«Оставить поле как было» даёт ошибку скорости 60%. Сеть даёт 50%. Она ближе к ответу, чем копия начальной картинки, и всё ещё далеко от 3%.
+Copying the initial field forward gives a velocity error of 60%. The network gives 50%. It is closer than a frozen picture, and still far from 3%.
 
-## Чем эта версия отличается от предыдущей
+## How this version differs from the previous one
 
-Сначала сеть писала скорость сама и получала штраф, если вода появлялась из ниоткуда. Штраф не помог: дивергенция на тесте была 0.31, ошибка скорости 47.6%, давления 96.3%. Сеть была быстрее решателя в 57 раз.
+At first the network wrote the velocity itself and was penalized when fluid appeared from nowhere. The penalty did not work. Test divergence was 0.31, velocity error 47.6%, pressure error 96.3%. The network was 57× faster than the solver.
 
-Потом скорость заменили на ротор. Дивергенция стала 1.3×10⁻⁶. Давление чуть улучшилось, до 89%. Ошибка скорости стала 50.5%, чуть хуже. Ускорение упало до 36 раз, потому что ротор — это ещё несколько преобразований Фурье.
+Then the velocity was replaced by a curl. Divergence became 1.3×10⁻⁶. Pressure improved a little, to 89%. Velocity error became 50.5%, a bit worse. The speedup fell to 36×, because the curl is a few extra Fourier transforms.
 
-До этого в папке был совсем другой опыт: плоская картинка, один короткий шаг, потом склейка шагов в цепочку. К этому заданию он не относится.
+Before that assignment, this folder held a different experiment: a flat picture, one short step, then those steps chained together. That experiment is a different task.
 
-## Как это устроено
+## How it is built
 
-Куб от 0 до 2π по каждой стороне. Вязкость 0.05, внешней силы нет. Эталон считает уравнение Навье–Стокса спектральным методом Рунге–Кутты. Сеть — оператор Фурье, 4 слоя, 886 тысяч параметров. Обучение на 12 траекториях. Проверка к концу всё ещё около 70% средней ошибки: примеров мало, сеть их запоминает.
+The cube runs from 0 to 2π on each side. Viscosity is 0.05. There is no external force. The reference solves the Navier–Stokes equations with a spectral Runge–Kutta method. The network is a Fourier operator, 4 layers, 886 thousand parameters, trained on 12 trajectories. At the end of training the validation error is still about 70%: there are too few examples, and the network memorizes them.
 
-## Запуск
+## Run
 
 ```bash
 python3.12 -m venv .venv
@@ -47,4 +47,4 @@ python -m unittest discover -s tests -t .
 python -m src.train_spec
 ```
 
-Числа лежат в `runs/spec_metrics.json`.
+The numbers are in `runs/spec_metrics.json`.
